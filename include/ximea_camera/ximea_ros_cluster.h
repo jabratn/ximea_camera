@@ -24,7 +24,7 @@ public:
   explicit ximea_ros_cluster(int num_cams);
   explicit ximea_ros_cluster(std::vector < std::string > filenames);
   void add_camera(ximea_ros_driver xd);
-  void remove_camera(int serial_no);
+  void remove_camera(std::string serial_no);
 
   // cluster functions
   void clusterInit();
@@ -39,16 +39,16 @@ public:
   }
 
   // individual camera functions (encapsulated for thread security)
-  void setExposure(int serial_no, int time);
-  void setImageDataFormat(int serial_no, std::string s);
-  void setROI(int serial_no, int l, int t, int w, int h);
+  void setExposure(std::string serial_no, int time);
+  void setImageDataFormat(std::string serial_no, std::string s);
+  void setROI(std::string serial_no, int l, int t, int w, int h);
 
 private:
   std::vector<ximea_ros_driver> cams_;
   std::vector<boost::thread*> threads_;
   bool devices_open_;
   int num_cams_;
-  int getCameraIndex(int serial_no);  // this is private so that no one tries to be smart and open/close our cameras externally, in which case we cannot manage
+  int getCameraIndex(std::string serial_no);  // this is private so that no one tries to be smart and open/close our cameras externally, in which case we cannot manage
   const int USB_BUS_SAFETY_MARGIN;
   const int USB3_BANDWIDTH;
   bool fixed_init_;

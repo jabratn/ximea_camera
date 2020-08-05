@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
   int frame_rate_;
   std::vector<std::string> file_names;
 
-  pnh.param<int>("frame_rate", frame_rate_, 100);
+  pnh.param<int>("frame_rate", frame_rate_, 10);
   pnh.getParam("camera_param_file_paths", file_names);
   ros::Rate loop(frame_rate_);
 

@@ -27,7 +27,7 @@ All rights reserved.
 class ximea_ros_driver : public ximea_driver
 {
 public:
-  ximea_ros_driver(const ros::NodeHandle &nh, std::string cam_name, int serial_no , std::string yaml_url);
+  //ximea_ros_driver(const ros::NodeHandle &nh, std::string cam_name, std::string serial_no , std::string yaml_url);
   ximea_ros_driver(const ros::NodeHandle &nh, std::string file_name);
   virtual void setImageDataFormat(std::string s);
   void publishImage(const ros::Time & now);  // since these 2 functions should have the same time stamp we leave it up to the user to specify the timeif it is needed to do one or the other

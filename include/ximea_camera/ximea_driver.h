@@ -32,7 +32,7 @@ All rights reserved.
 class ximea_driver
 {
 public:
-  explicit ximea_driver(int serial_no = 0 , std::string cam_name = "");  // if no serial no is specified select the first cam on the bus
+  //explicit ximea_driver(std::string serial_no = "" , std::string cam_name = "");  // if no serial no is specified select the first cam on the bus
   explicit ximea_driver(std::string file_name);
 
   int readParamsFromFile(std::string file_name);
@@ -46,13 +46,16 @@ public:
   void stopAcquisition();
   void acquireImage();
   void triggerDevice();
-  int getSerialNo() const
+  std::string getSerialNo() const
   {
     return serial_no_;
   }
   virtual void setImageDataFormat(std::string s);  // this is virtual because the ros class needs to do a bit more work to publish the right image
   void setROI(int rect_left, int rect_top, int rect_width, int rect_height);
+  void setDownsample (int factor);
+  void setGain (float gain);
   void setExposure(int time);
+  void setAutoWb(bool auto_wb);
   void setAutoExposure(int auto_exposure);
   void setAutoExposureLimit(int ae_limit);
   void setAutoGainLimit(int ag_limit);
@@ -71,13 +74,15 @@ protected:
 
   // variables for ximea api internals
   std::string cam_name_;
-  int serial_no_;
+  std::string serial_no_;
   std::string frame_id_;
   int cams_on_bus_;
   int bandwidth_safety_margin_;
   int frame_rate_;
   int bandwidth_;
   int exposure_time_;
+  float gain_;
+  bool auto_wb_;
   int auto_exposure_;
   int auto_exposure_limit_;
   int auto_gain_limit_;

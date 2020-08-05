@@ -16,26 +16,27 @@ All rights reserved.
 #include <sstream>
 #include <string>
 
-ximea_driver::ximea_driver(int serial_no, std::string cam_name)
+/*ximea_driver::ximea_driver(std::string serial_no, std::string cam_name)
 {
   serial_no_ = serial_no;
   cam_name_ = cam_name;
   assignDefaultValues();
-}
+}*/
 
 void ximea_driver::assignDefaultValues()
 {
-  cams_on_bus_ = 4;
+  cams_on_bus_ = 1;
   bandwidth_safety_margin_ = 30;
-  binning_enabled_ = false;
-  downsample_factor_ = false;
+  binning_enabled_ = true;
+  downsample_factor_ = 2;
   auto_exposure_ = 0;
   auto_exposure_limit_ = 500000;
   auto_gain_limit_ = 2;
   auto_exposure_priority_ = 0.8;
-
+  gain_ = 6;
   exposure_time_ = 1000;
-  image_data_format_ = "XI_MONO8";
+  auto_wb_ = false;
+  image_data_format_ = "XI_RAW8";
   rect_left_ = 0;
   rect_top_ = 0;
   rect_width_ = 1280;
@@ -71,19 +72,26 @@ void ximea_driver::applyParameters()
   setImageDataFormat(image_data_format_);
   if (0 == auto_exposure_) {
       setExposure(exposure_time_);
+      setGain(gain_);
+
   } else {
       setAutoExposure(auto_exposure_);
       setAutoExposureLimit(auto_exposure_limit_);
       setAutoGainLimit(auto_gain_limit_);
       setAutoExposurePriority(auto_exposure_priority_);
   }
-  setROI(rect_left_, rect_top_, rect_width_, rect_height_);
+  setDownsample(downsample_factor_);
+  setAutoWb(auto_wb_);
+  // int val = 0;
+  // xiGetParamInt(xiH_, XI_PRM_AVAILABLE_BANDWIDTH, &val );
+  // std::cout <<"available bw: " <<val<<std::endl;
+  //setROI(rect_left_, rect_top_, rect_width_, rect_height_);
 }
 
 void ximea_driver::openDevice()
 {
   XI_RETURN stat;
-  if (serial_no_ == 0)
+  if (serial_no_ == "")
   {
     stat = xiOpenDevice(0, &xiH_);
     errorHandling(stat, "Open Device");
@@ -137,9 +145,14 @@ void ximea_driver::acquireImage()
     return;
   }
   XI_RETURN stat = xiGetImage(xiH_, image_capture_timeout_, &image_);
+  
   if (stat != 0)
   {
     std::cout << "Error on" << cam_name_ << " with error " <<  stat << std::endl;
+  }else{
+    // std::cout <<"width: "<< image_.width <<std::endl;
+    // std::cout <<"height: "<< image_.height <<std::endl;
+
   }
 }
 
@@ -245,20 +258,47 @@ void ximea_driver::setROI(int l, int t, int w, int h)
   std::cout << "top increment " << tmp << std::endl;
 }
 
+void ximea_driver::setDownsample (int factor){
+  
+  XI_RETURN stat;
+  stat = xiSetParamInt(xiH_, XI_PRM_BINNING_SELECTOR, XI_BIN_SELECT_HOST_CPU);
+  errorHandling(stat, "xiSetParamInt (CPU)");
+ 
+  // stat = xiSetParamInt(xiH_, XI_PRM_DOWNSAMPLING_TYPE, XI_SKIPPING);
+  // errorHandling(stat, "xiSetParamInt (DownSampling)");
+  stat = xiSetParamInt(xiH_, XI_PRM_DOWNSAMPLING, factor);
+  errorHandling(stat, "xiSetParamInt (DownSampling)");
+  
+}
+
 void ximea_driver::setExposure(int time)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_EXPOSURE, time);
-  errorHandling(stat, "xiOSetParamInt (Exposure Time)");
+  errorHandling(stat, "xiSetParamInt (Exposure Time)");
   if (!stat)
   {
     exposure_time_ = time;
   }
 }
 
+void ximea_driver::setGain(float gain)
+{
+  XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_GAIN, gain);
+  errorHandling(stat, "xiSetParamInt (Gain)");
+ 
+}
+
+void ximea_driver::setAutoWb(bool auto_wb)
+{
+  XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AUTO_WB, auto_wb);
+  errorHandling(stat, "xiSetParamInt (white balance)");
+ 
+}
+
 void ximea_driver::setAutoExposure(int auto_exposure)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AEAG, auto_exposure);
-  errorHandling(stat, "xiOSetParamInt (AutoExposure Time)");
+  errorHandling(stat, "xiSetParamInt (AutoExposure Time)");
   if (!stat)
   {
     // auto_exposureme_ = time;
@@ -268,7 +308,7 @@ void ximea_driver::setAutoExposure(int auto_exposure)
 void ximea_driver::setAutoExposureLimit(int ae_limit)
 {
   XI_RETURN stat = xiSetParamFloat(xiH_, XI_PRM_AE_MAX_LIMIT, ae_limit);
-  errorHandling(stat, "xiOSetParamInt (AutoExposure Limit Time)");
+  errorHandling(stat, "xiSetParamInt (AutoExposure Limit Time)");
   if (!stat)
   {
     // auto_exposureme_ = time;
@@ -278,7 +318,7 @@ void ximea_driver::setAutoExposureLimit(int ae_limit)
 void ximea_driver::setAutoGainLimit(int ag_limit)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AG_MAX_LIMIT, ag_limit);
-  errorHandling(stat, "xiOSetParamInt (AutoExposure Limit GAIN)");
+  errorHandling(stat, "xiSetParamInt (AutoExposure Limit GAIN)");
   if (!stat)
   {
     // auto_exposureme_ = time;
@@ -289,7 +329,7 @@ void ximea_driver::setAutoGainLimit(int ag_limit)
 void ximea_driver::setAutoExposurePriority(float exp_priority)
 {
   XI_RETURN stat = xiSetParamFloat(xiH_, XI_PRM_EXP_PRIORITY, exp_priority);
-  errorHandling(stat, "xiOSetParamInt (AutoExposure Priority)");
+  errorHandling(stat, "xiSetParamInt (AutoExposure Priority)");
   if (!stat)
   {
     // auto_exposureme_ = time;
@@ -315,7 +355,7 @@ int ximea_driver::readParamsFromFile(std::string file_name)
 
   try
   {
-    serial_no_ = doc["serial_no"].as<int>();
+    serial_no_ = doc["serial_no"].as<std::string>();
   }
   catch (std::runtime_error) {}
   try
@@ -361,6 +401,18 @@ int ximea_driver::readParamsFromFile(std::string file_name)
 
   try
   {
+    gain_ = doc["gain"].as<float>();
+  }
+  catch (std::runtime_error) {}
+
+  try
+  {
+    auto_wb_ = doc["auto_wb"].as<bool>();
+  }
+  catch (std::runtime_error) {}
+
+  try
+  {
     auto_exposure_ = doc["auto_exposure"].as<int>();
   }
   catch (std::runtime_error) {}
@@ -391,9 +443,11 @@ int ximea_driver::readParamsFromFile(std::string file_name)
 
   try
   {
-    downsample_factor_ = doc["downsample_factor_"].as<int>();
+    downsample_factor_ = doc["downsample_factor"].as<int>();
   }
   catch (std::runtime_error) {}
+
+  
 
   try
   {
@@ -416,13 +470,13 @@ int ximea_driver::readParamsFromFile(std::string file_name)
     rect_height_ = doc["rect_height"].as<int>();
   }
   catch (std::runtime_error) {}
-  setROI(rect_left_, rect_top_, rect_width_, rect_height_);
+  // setROI(rect_left_, rect_top_, rect_width_, rect_height_);
   try
   {
     image_data_format_ = doc["image_data_format"].as<std::string>();
   }
   catch (std::runtime_error) {}
-  setImageDataFormat(image_data_format_);
+  // setImageDataFormat(image_data_format_);
 }
 void ximea_driver::enableTrigger(unsigned char trigger_mode)
 {

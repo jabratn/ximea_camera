@@ -1,0 +1,16 @@
+serial_no: XUCAS1716015 #XUCAS1716011  
+cam_name: "camera"
+# auto_exposure: true
+exposure_time: 50000
+gain: 6
+# auto_exposure_priority: 0.8
+auto_wb: true
+yaml_url: "package://ximea_camera/calibration/intrinsic.yaml"
+image_data_format: "XI_RAW8"  #XI_RGB32, XI_MONO8
+camera_frame: "camera_optical"
+#height: 700
+#width: 1000
+binning_enabled: true
+downsample_factor: 2
+
+

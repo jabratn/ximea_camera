@@ -14,7 +14,7 @@ All rights reserved.
 #include <ximea_camera/ximea_ros_cluster.h>
 #include <string>
 #include <vector>
-int serial_nos[3] = { 32300651 ,  33300151 , 32301251};
+std::string serial_nos[3] = {"XUCAS1716011", "XUCAS1716011", "XUCAS1716011"};
 std::string cam_names[3] = {std::string("camera1"), std::string("camera2"), std::string("camera3")};
 std::string calib_file_names[3] =
 {
@@ -38,7 +38,7 @@ std::string getCamNameFromYaml(std::string file_name)
   return ret;
 }
 
-ximea_ros_cluster::ximea_ros_cluster(int num_cams) : USB_BUS_SAFETY_MARGIN(0), USB3_BANDWIDTH(2400)
+/*ximea_ros_cluster::ximea_ros_cluster(int num_cams) : USB_BUS_SAFETY_MARGIN(0), USB3_BANDWIDTH(2400)
 {
   num_cams_ = num_cams;
   devices_open_ = false;
@@ -50,7 +50,7 @@ ximea_ros_cluster::ximea_ros_cluster(int num_cams) : USB_BUS_SAFETY_MARGIN(0), U
   // must limit the cluster usb bandwidth to support > 2 cameras
   xiSetParamInt(0, XI_PRM_AUTO_BANDWIDTH_CALCULATION, XI_OFF);
   fixed_init_ = true;
-}
+}*/
 
 ximea_ros_cluster::ximea_ros_cluster(std::vector<std::string> filenames) : USB_BUS_SAFETY_MARGIN(0), USB3_BANDWIDTH(2400)
 {
@@ -79,7 +79,7 @@ void ximea_ros_cluster::add_camera(ximea_ros_driver xd)
   ROS_INFO_STREAM("done camera add");
 }
 
-void ximea_ros_cluster::remove_camera(int serial_no)
+void ximea_ros_cluster::remove_camera(std::string serial_no)
 {
   if (devices_open_)
   {
@@ -111,6 +111,7 @@ void ximea_ros_cluster::clusterInit()
       cams_[i].setExposure(10000);
     }
     cams_[i].limitBandwidth((USB3_BANDWIDTH) - USB_BUS_SAFETY_MARGIN);
+    std::cout <<"limit BANDWIDTH to: "<<USB3_BANDWIDTH -USB_BUS_SAFETY_MARGIN <<std::endl;
     cams_[i].startAcquisition();
     // TODO: remove this into constructor
   }
@@ -182,7 +183,7 @@ void ximea_ros_cluster::clusterPublishImageAndCamInfo()
   }
 }
 
-int ximea_ros_cluster::getCameraIndex(int serial_no)
+int ximea_ros_cluster::getCameraIndex(std::string serial_no)
 {
   for (int i = 0; i < cams_.size(); i++)
   {
@@ -194,7 +195,7 @@ int ximea_ros_cluster::getCameraIndex(int serial_no)
   return -1;
 }
 
-void ximea_ros_cluster::setExposure(int serial_no, int time)
+void ximea_ros_cluster::setExposure(std::string serial_no, int time)
 {
   int idx = getCameraIndex(serial_no) ;
   if (idx != -1)
@@ -203,7 +204,7 @@ void ximea_ros_cluster::setExposure(int serial_no, int time)
   }
 }
 
-void ximea_ros_cluster::setImageDataFormat(int serial_no, std::string s)
+void ximea_ros_cluster::setImageDataFormat(std::string serial_no, std::string s)
 {
   int idx = getCameraIndex(serial_no) ;
   if (idx != -1)
@@ -212,7 +213,7 @@ void ximea_ros_cluster::setImageDataFormat(int serial_no, std::string s)
   }
 }
 
-void ximea_ros_cluster::setROI(int serial_no, int l, int t, int w, int h)
+void ximea_ros_cluster::setROI(std::string serial_no, int l, int t, int w, int h)
 {
   int idx = getCameraIndex(serial_no) ;
   if (idx != -1)
