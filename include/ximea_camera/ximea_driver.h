@@ -56,10 +56,11 @@ public:
   void setGain (float gain);
   void setExposure(int time);
   void setAutoWb(bool auto_wb);
-  void setAutoExposure(int auto_exposure);
+  void setAutoExposure(bool auto_exposure);
   void setAutoExposureLimit(int ae_limit);
   void setAutoGainLimit(int ag_limit);
   void setAutoExposurePriority(float exp_priority);
+  void setAutoExposureLevel(int exp_level_pct);
   bool hasValidHandle()
   {
     return xiH_ == NULL ? false : true;
@@ -77,22 +78,21 @@ protected:
   std::string serial_no_;
   std::string frame_id_;
   int cams_on_bus_;
-  int bandwidth_safety_margin_;
   int frame_rate_;
   int bandwidth_;
   int exposure_time_;
   float gain_;
   bool auto_wb_;
-  int auto_exposure_;
+  bool auto_exposure_;
   int auto_exposure_limit_;
   int auto_gain_limit_;
   float auto_exposure_priority_;
-  bool binning_enabled_;
+  int exp_level_pct_;
   int downsample_factor_;
-  int rect_left_;
-  int rect_top_;
-  int rect_width_;
-  int rect_height_;
+  int roi_left_;
+  int roi_top_;
+  int roi_width_;
+  int roi_height_;
   bool acquisition_active_;
   std::string image_data_format_;  // One of XI_MONO8, XI_RGB24, XI_RGB32, XI_RAW
   std::string yaml_url_;

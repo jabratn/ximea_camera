@@ -26,21 +26,21 @@ All rights reserved.
 void ximea_driver::assignDefaultValues()
 {
   cams_on_bus_ = 1;
-  bandwidth_safety_margin_ = 30;
-  binning_enabled_ = true;
-  downsample_factor_ = 2;
-  auto_exposure_ = 0;
+  bandwidth_ = 0;
+  downsample_factor_ = 1;
+  auto_exposure_ = true;
   auto_exposure_limit_ = 500000;
   auto_gain_limit_ = 2;
-  auto_exposure_priority_ = 0.8;
-  gain_ = 6;
-  exposure_time_ = 1000;
-  auto_wb_ = false;
+  auto_exposure_priority_ = 1.0;
+  exp_level_pct_ = 50;
+  gain_ = 0;
+  exposure_time_ = 100000;
+  auto_wb_ = true;
   image_data_format_ = "XI_RAW8";
-  rect_left_ = 0;
-  rect_top_ = 0;
-  rect_width_ = 1280;
-  rect_height_ = 1024;
+  roi_left_ = 0;
+  roi_top_ = 0;
+  roi_width_ = 0;
+  roi_height_ = 0;
   xiH_ = NULL;
   image_.size = sizeof(XI_IMG);
   image_.bp = NULL;
@@ -70,22 +70,24 @@ void ximea_driver::errorHandling(XI_RETURN ret, std::string message)
 void ximea_driver::applyParameters()
 {
   setImageDataFormat(image_data_format_);
-  if (0 == auto_exposure_) {
-      setExposure(exposure_time_);
-      setGain(gain_);
+  setExposure(exposure_time_);
+  setGain(gain_);
+  setAutoWb(auto_wb_);
+  setAutoExposure(auto_exposure_);
 
-  } else {
-      setAutoExposure(auto_exposure_);
+  if (auto_exposure_) {
       setAutoExposureLimit(auto_exposure_limit_);
       setAutoGainLimit(auto_gain_limit_);
       setAutoExposurePriority(auto_exposure_priority_);
+      setAutoExposureLevel(exp_level_pct_);
   }
-  setDownsample(downsample_factor_);
-  setAutoWb(auto_wb_);
-  // int val = 0;
-  // xiGetParamInt(xiH_, XI_PRM_AVAILABLE_BANDWIDTH, &val );
-  // std::cout <<"available bw: " <<val<<std::endl;
-  //setROI(rect_left_, rect_top_, rect_width_, rect_height_);
+
+  if (downsample_factor_ > 1)
+  {
+    setDownsample(downsample_factor_);
+  }
+
+  setROI(roi_left_, roi_top_, roi_width_, roi_height_);
 }
 
 void ximea_driver::openDevice()
@@ -165,37 +167,32 @@ void ximea_driver::setImageDataFormat(std::string image_format)
   {
     return;
   }
+
   if (image_format == std::string("XI_MONO16"))
   {
     image_data_format = XI_MONO16;
   }
-
   else if (image_format == std::string("XI_RGB24"))
   {
     image_data_format = XI_RGB24;
   }
-
   else if (image_format == std::string("XI_RGB32"))
   {
     image_data_format = XI_RGB32;
   }
-
   else if (image_format == std::string("XI_RGB_PLANAR"))
   {
     image_data_format = XI_MONO8;
     std::cout << "This is unsupported in ROS default to XI_MONO8" << std::endl;
   }
-
   else if (image_format == std::string("XI_RAW8"))
   {
     image_data_format = XI_RAW8;
   }
-
   else if (image_format == std::string("XI_RAW16"))
   {
     image_data_format = XI_RAW16;
   }
-
   else
   {
     image_data_format = XI_MONO8;
@@ -206,7 +203,7 @@ void ximea_driver::setImageDataFormat(std::string image_format)
   image_data_format_ = image_data_format;
 }
 
-void ximea_driver::setROI(int l, int t, int w, int h)
+void ximea_driver::setROI(int rect_left, int rect_top, int rect_width, int rect_height)
 {
   XI_RETURN stat;
 
@@ -215,60 +212,41 @@ void ximea_driver::setROI(int l, int t, int w, int h)
     return;
   }
 
-  if (l < 0 || l > 1280) rect_left_ = 0;
-  else rect_left_ = l;
-  if (t < 0 || t > 1024) rect_top_ = 0;
-  else rect_top_ = t;
-  if (w < 0 || w > 1280) rect_width_ = 1280;
-  else rect_width_ = w;
-  if (h < 0 || h > 1024) rect_height_ = 1024;
-  else rect_height_ = h;
-  if (l + w > 1280)
+  if (rect_width)
   {
-    rect_left_ =  0;
-    rect_width_ = 1280;
-  }
-  if (h + t > 1024)
-  {
-    rect_top_ =  0;
-    rect_height_ = 1024;
+    stat = xiSetParamInt(xiH_, XI_PRM_WIDTH, rect_width);
+    errorHandling(stat, "xiSetParamInt (XI_PRM_WIDTH)");
   }
 
-  std::cout << rect_height_ << " " << rect_width_ << " " << rect_left_ << " " << rect_top_ << std::endl;
+  if (rect_height)
+  {
+    stat = xiSetParamInt(xiH_, XI_PRM_HEIGHT, rect_height);
+    errorHandling(stat, "xiSetParamInt (XI_PRM_HEIGHT)");
+  }
 
-  int tmp;
-  stat = xiSetParamInt(xiH_, XI_PRM_WIDTH, rect_width_);
-  errorHandling(stat, "xiSetParamInt (aoi width)");
-  xiGetParamInt(xiH_, XI_PRM_WIDTH XI_PRM_INFO_INCREMENT, &tmp);
-  std::cout << "width increment " << tmp << std::endl;
+  if (rect_left)
+  {
+    stat = xiSetParamInt(xiH_, XI_PRM_OFFSET_X, rect_left);
+    errorHandling(stat, "xiSetParamInt (XI_PRM_OFFSET_X)");
+  }
 
-  stat = xiSetParamInt(xiH_, XI_PRM_HEIGHT, rect_height_);
-  errorHandling(stat, "xiSetParamInt (aoi height)");
-  xiGetParamInt(xiH_, XI_PRM_HEIGHT XI_PRM_INFO_INCREMENT, &tmp);
-  std::cout << "height increment " << tmp << std::endl;
-
-  stat = xiSetParamInt(xiH_, XI_PRM_OFFSET_X, rect_left_);
-  errorHandling(stat, "xiSetParamInt (aoi left)");
-  xiGetParamInt(xiH_, XI_PRM_OFFSET_X XI_PRM_INFO_INCREMENT, &tmp);
-  std::cout << "left increment " << tmp << std::endl;
-
-  stat = xiSetParamInt(xiH_, XI_PRM_OFFSET_Y, rect_top_);
-  errorHandling(stat, "xiSetParamInt (aoi top)");
-  xiGetParamInt(xiH_, XI_PRM_OFFSET_Y XI_PRM_INFO_INCREMENT, &tmp);
-  std::cout << "top increment " << tmp << std::endl;
+  if (rect_top)
+  {
+    stat = xiSetParamInt(xiH_, XI_PRM_OFFSET_Y, rect_top);
+    errorHandling(stat, "xiSetParamInt (XI_PRM_OFFSET_Y)");
+  }
 }
 
 void ximea_driver::setDownsample (int factor){
   
   XI_RETURN stat;
   stat = xiSetParamInt(xiH_, XI_PRM_BINNING_SELECTOR, XI_BIN_SELECT_HOST_CPU);
-  errorHandling(stat, "xiSetParamInt (CPU)");
+  errorHandling(stat, "xiSetParamInt (XI_BIN_SELECT_HOST_CPU)");
  
   // stat = xiSetParamInt(xiH_, XI_PRM_DOWNSAMPLING_TYPE, XI_SKIPPING);
   // errorHandling(stat, "xiSetParamInt (DownSampling)");
   stat = xiSetParamInt(xiH_, XI_PRM_DOWNSAMPLING, factor);
   errorHandling(stat, "xiSetParamInt (DownSampling)");
-  
 }
 
 void ximea_driver::setExposure(int time)
@@ -285,57 +263,43 @@ void ximea_driver::setGain(float gain)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_GAIN, gain);
   errorHandling(stat, "xiSetParamInt (Gain)");
- 
 }
 
 void ximea_driver::setAutoWb(bool auto_wb)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AUTO_WB, auto_wb);
   errorHandling(stat, "xiSetParamInt (white balance)");
- 
 }
 
-void ximea_driver::setAutoExposure(int auto_exposure)
+void ximea_driver::setAutoExposure(bool auto_exposure)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AEAG, auto_exposure);
-  errorHandling(stat, "xiSetParamInt (AutoExposure Time)");
-  if (!stat)
-  {
-    // auto_exposureme_ = time;
-  }
+  errorHandling(stat, "xiSetParamInt (AutoExposure)");
 }
 
 void ximea_driver::setAutoExposureLimit(int ae_limit)
 {
-  XI_RETURN stat = xiSetParamFloat(xiH_, XI_PRM_AE_MAX_LIMIT, ae_limit);
+  XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AE_MAX_LIMIT, ae_limit);
   errorHandling(stat, "xiSetParamInt (AutoExposure Limit Time)");
-  if (!stat)
-  {
-    // auto_exposureme_ = time;
-  }
 }
 
 void ximea_driver::setAutoGainLimit(int ag_limit)
 {
   XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AG_MAX_LIMIT, ag_limit);
   errorHandling(stat, "xiSetParamInt (AutoExposure Limit GAIN)");
-  if (!stat)
-  {
-    // auto_exposureme_ = time;
-  }
 }
-
 
 void ximea_driver::setAutoExposurePriority(float exp_priority)
 {
   XI_RETURN stat = xiSetParamFloat(xiH_, XI_PRM_EXP_PRIORITY, exp_priority);
-  errorHandling(stat, "xiSetParamInt (AutoExposure Priority)");
-  if (!stat)
-  {
-    // auto_exposureme_ = time;
-  }
+  errorHandling(stat, "xiSetParamFloat (AutoExposure Priority)");
 }
 
+void ximea_driver::setAutoExposureLevel(int exp_level_pct)
+{
+  XI_RETURN stat = xiSetParamInt(xiH_, XI_PRM_AEAG_LEVEL, exp_level_pct);
+  errorHandling(stat, "xiSetParamInt (AutoExposure Level)");
+}
 
 int ximea_driver::readParamsFromFile(std::string file_name)
 {
@@ -383,7 +347,7 @@ int ximea_driver::readParamsFromFile(std::string file_name)
 
   try
   {
-    bandwidth_safety_margin_ = doc["bandwidth_safety_margin"].as<int>();
+    bandwidth_ = doc["bandwidth"].as<int>();
   }
   catch (std::runtime_error) {}
 
@@ -413,7 +377,7 @@ int ximea_driver::readParamsFromFile(std::string file_name)
 
   try
   {
-    auto_exposure_ = doc["auto_exposure"].as<int>();
+    auto_exposure_ = doc["auto_exposure"].as<bool>();
   }
   catch (std::runtime_error) {}
 
@@ -437,7 +401,7 @@ int ximea_driver::readParamsFromFile(std::string file_name)
 
   try
   {
-    binning_enabled_ = doc["binning_enabled"].as<bool>();
+    exp_level_pct_ = doc["auto_exposure_level_pct"].as<int>();
   }
   catch (std::runtime_error) {}
 
@@ -447,36 +411,33 @@ int ximea_driver::readParamsFromFile(std::string file_name)
   }
   catch (std::runtime_error) {}
 
-  
+  try
+  {
+    roi_left_ = doc["roi_left"].as<int>();
+  }
+  catch (std::runtime_error) {}
+  try
+  {
+    roi_top_ = doc["roi_top"].as<int>();
+  }
+  catch (std::runtime_error) {}
+  try
+  {
+    roi_width_ = doc["roi_width"].as<int>();
+  }
+  catch (std::runtime_error) {}
 
   try
   {
-    rect_left_ = doc["rect_left"].as<int>();
-  }
-  catch (std::runtime_error) {}
-  try
-  {
-    rect_top_ = doc["rect_top"].as<int>();
-  }
-  catch (std::runtime_error) {}
-  try
-  {
-    rect_width_ = doc["rect_width"].as<int>();
+    roi_height_ = doc["roi_height"].as<int>();
   }
   catch (std::runtime_error) {}
 
-  try
-  {
-    rect_height_ = doc["rect_height"].as<int>();
-  }
-  catch (std::runtime_error) {}
-  // setROI(rect_left_, rect_top_, rect_width_, rect_height_);
   try
   {
     image_data_format_ = doc["image_data_format"].as<std::string>();
   }
   catch (std::runtime_error) {}
-  // setImageDataFormat(image_data_format_);
 }
 void ximea_driver::enableTrigger(unsigned char trigger_mode)
 {
@@ -526,6 +487,14 @@ void ximea_driver::limitBandwidth(int mbps)
 {
   if (!xiH_) return;
   XI_RETURN stat;
-  // stat = xiSetParamInt(xiH_, XI_PRM_LIMIT_BANDWIDTH , mbps);
-  // errorHandling(stat, "could not limit bandwidth");
+  stat = xiSetParamInt(xiH_, XI_PRM_LIMIT_BANDWIDTH_MODE , XI_ON);
+  if (!stat)
+  {
+    errorHandling(stat, "could not enable bandwidth");
+  }
+  stat = xiSetParamInt(xiH_, XI_PRM_LIMIT_BANDWIDTH , mbps);
+  if (!stat)
+  {
+    errorHandling(stat, "could not limit bandwidth");
+  }
 }

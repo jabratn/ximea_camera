@@ -20,10 +20,11 @@ int main(int argc, char ** argv)
   ros::init(argc, argv, "ximea");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
-  int frame_rate_;
+  int frame_rate_, bandwidth_mbps_;
   std::vector<std::string> file_names;
 
   pnh.param<int>("frame_rate", frame_rate_, 10);
+  pnh.param<int>("bandwidth_mbps", bandwidth_mbps_, 0);
   pnh.getParam("camera_param_file_paths", file_names);
   ros::Rate loop(frame_rate_);
 
@@ -41,7 +42,7 @@ int main(int argc, char ** argv)
     }
   }
 
-  ximea_ros_cluster xd(file_names);
+  ximea_ros_cluster xd(file_names, bandwidth_mbps_);
   xd.clusterInit();
   while (ros::ok())   // TODO: need to robustify against replugging and cntrlc
   {

@@ -14,14 +14,6 @@ All rights reserved.
 #include <ximea_camera/ximea_ros_cluster.h>
 #include <string>
 #include <vector>
-std::string serial_nos[3] = {"XUCAS1716011", "XUCAS1716011", "XUCAS1716011"};
-std::string cam_names[3] = {std::string("camera1"), std::string("camera2"), std::string("camera3")};
-std::string calib_file_names[3] =
-{
-  "package://mcptam/calibrations/camera1.yaml",
-  "package://mcptam/calibrations/camera2.yaml",
-  "package://mcptam/calibrations/camera3.yaml"
-};
 
 std::string getCamNameFromYaml(std::string file_name)
 {
@@ -38,21 +30,7 @@ std::string getCamNameFromYaml(std::string file_name)
   return ret;
 }
 
-/*ximea_ros_cluster::ximea_ros_cluster(int num_cams) : USB_BUS_SAFETY_MARGIN(0), USB3_BANDWIDTH(2400)
-{
-  num_cams_ = num_cams;
-  devices_open_ = false;
-  for (int i = 0 ; i < num_cams; i ++)
-  {
-    ros::NodeHandle nh(std::string("/") + cam_names[i]);
-    add_camera(ximea_ros_driver(nh, cam_names[i], serial_nos[i], calib_file_names[i]));
-  }
-  // must limit the cluster usb bandwidth to support > 2 cameras
-  xiSetParamInt(0, XI_PRM_AUTO_BANDWIDTH_CALCULATION, XI_OFF);
-  fixed_init_ = true;
-}*/
-
-ximea_ros_cluster::ximea_ros_cluster(std::vector<std::string> filenames) : USB_BUS_SAFETY_MARGIN(0), USB3_BANDWIDTH(2400)
+ximea_ros_cluster::ximea_ros_cluster(std::vector<std::string> filenames, int bandwidth_mbps = 0) : bandwidth_mbps(bandwidth_mbps)
 {
   devices_open_ = false;
   for (int i = 0 ; i < filenames.size(); i ++)
@@ -61,10 +39,6 @@ ximea_ros_cluster::ximea_ros_cluster(std::vector<std::string> filenames) : USB_B
     ros::NodeHandle nh(std::string("/") + cam_name);
     add_camera(ximea_ros_driver(nh, filenames[i]));
   }
-
-  // must limit the cluster usb bandwidth to support > 2 cameras
-  xiSetParamInt(0, XI_PRM_AUTO_BANDWIDTH_CALCULATION, XI_OFF);
-  fixed_init_ = false;
 }
 
 void ximea_ros_cluster::add_camera(ximea_ros_driver xd)
@@ -104,14 +78,12 @@ void ximea_ros_cluster::clusterInit()
   {
     ROS_INFO_STREAM("opening device " << cams_[i].getSerialNo());
     cams_[i].openDevice();
-    if (fixed_init_)
+    if (bandwidth_mbps)
     {
-      cams_[i].setImageDataFormat("XI_MONO8");
-      cams_[i].setROI(200, 200, 900, 600);
-      cams_[i].setExposure(10000);
+      // share bandwidth between cameras
+      cams_[i].limitBandwidth(bandwidth_mbps/cams_.size());
+      std::cout << "limit BANDWIDTH to: " << bandwidth_mbps/cams_.size() << std::endl;
     }
-    cams_[i].limitBandwidth((USB3_BANDWIDTH) - USB_BUS_SAFETY_MARGIN);
-    std::cout <<"limit BANDWIDTH to: "<<USB3_BANDWIDTH -USB_BUS_SAFETY_MARGIN <<std::endl;
     cams_[i].startAcquisition();
     // TODO: remove this into constructor
   }
@@ -155,7 +127,6 @@ void ximea_ros_cluster::clusterPublishImages()
     delete threads_[i];
   }
 }
-
 
 void ximea_ros_cluster::clusterPublishCamInfo()
 {

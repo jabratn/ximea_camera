@@ -86,48 +86,43 @@ void ximea_ros_driver::setImageDataFormat(std::string image_format)
   {
     return;
   }
+
   if (image_format == std::string("XI_MONO16"))
   {
     image_data_format = XI_MONO16;
     encoding_ = std::string("mono16");
     bpp_ = 2;
   }
-
   else if (image_format == std::string("XI_RGB24"))
   {
     image_data_format = XI_RGB24;
     encoding_ = std::string("bgr8");
     bpp_ = 3;
   }
-
   else if (image_format == std::string("XI_RGB32"))
   {
     image_data_format = XI_RGB32;
-    encoding_ = std::string("bgr16");
-    bpp_ = 3;
+    encoding_ = std::string("bgra8");
+    bpp_ = 4;
   }
-
   else if (image_format == std::string("XI_RGB_PLANAR"))
   {
     image_data_format = XI_MONO8;
     std::cout << "This is unsupported in ROS default to XI_MONO8" << std::endl;
     bpp_ = 1;
   }
-
   else if (image_format == std::string("XI_RAW8"))
   {
     image_data_format = XI_RAW8;
-    encoding_ = std::string("mono8");
+    encoding_ = std::string("bayer_bggr8");
     bpp_ = 1;
   }
-
   else if (image_format == std::string("XI_RAW16"))
   {
     image_data_format = XI_RAW16;
-    encoding_ = std::string("mono16");
+    encoding_ = std::string("bayer_bggr16");
     bpp_ = 2;
   }
-
   else
   {
     image_data_format = XI_MONO8;
