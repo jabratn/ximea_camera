@@ -4,7 +4,7 @@
 
   <node name="ximea" pkg="ximea_camera" type="ximea_camera_node" output="screen" >
     <param name="frame_rate" type="int" value="20" />
-    <param name="bandwidth_mbps" type="int" value="8000" />
+    <param name="bandwidth_mbps" type="int" value="2000" />
     <rosparam param="camera_param_file_paths" subst_value="true">[$(find ximea_camera)/config/custom_ximea.yaml]</rosparam>
   </node>
 
